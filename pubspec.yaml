@@ -1,4 +1,4 @@
-name: fbsc_mobile
+name: four_brothers
 description: Four Brothers Sports Center Mobile App
 publish_to: 'none'
 version: 1.0.0+1
@@ -14,6 +14,7 @@ dependencies:
   shared_preferences: ^2.2.2
   url_launcher: ^6.2.2
   share_plus: ^12.0.1
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
@@ -22,6 +23,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
   assets:
-    - assets/
     - assets/logo.png
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/logo.png"

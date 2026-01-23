@@ -16,6 +16,9 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
   double _progress = 0;
   bool _error = false;
   String _errorMessage = '';
+  int _productsCount = 0;
+  int _usersCount = 0;
+  int _ordersCount = 0;
 
   @override
   void initState() {
@@ -33,9 +36,20 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
     final apiService = Provider.of<ApiService>(context, listen: false);
 
     try {
-      // Simulate loading progress
       for (int i = 0; i <= 100; i += 5) {
-        setState(() => _progress = i / 100);
+        setState(() {
+          _progress = i / 100;
+          if (i < 30) {
+            _productsCount = (i * 0.5).toInt();
+          } else if (i < 60) {
+            _productsCount = (15 + (i - 30) * 0.3).toInt();
+            _usersCount = (i * 0.2).toInt();
+          } else {
+            _productsCount = (24 + (i - 60) * 0.25).toInt();
+            _usersCount = (12 + (i - 60) * 0.15).toInt();
+            _ordersCount = (i * 0.1).toInt();
+          }
+        });
         await Future.delayed(const Duration(milliseconds: 50));
       }
 
@@ -93,77 +107,71 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Logo Animation
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Colors.green, Colors.black, Colors.blue],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withOpacity(0.3),
-                            blurRadius: 30,
-                            spreadRadius: 5,
-                          ),
-                        ],
+                // Real Logo
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        spreadRadius: 2,
                       ),
-                      child: RotationTransition(
-                        turns: _controller,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                Colors.white.withOpacity(0.4),
-                                Colors.transparent,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.blue,
+                          child: const Center(
+                            child: Text(
+                              'FB',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
-                    const Text(
-                      'FBSC',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            blurRadius: 4,
-                            color: Colors.black,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
                 
                 const SizedBox(height: 30),
                 
-                // Title
+                // App Name
                 const Text(
-                  'Four Brothers Sports Center',
+                  'Four Brothers',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 5),
+                
+                // Tagline
+                const Text(
+                  'Sports Center',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 
                 const SizedBox(height: 10),
                 
-                // Subtitle
+                // Loading text
                 const Text(
                   'Inapakua programu yako...',
                   style: TextStyle(
@@ -203,9 +211,9 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStat(Provider.of<ApiService>(context).products.length.toString(), 'Bidhaa'),
-                    _buildStat('0', 'Wateja'),
-                    _buildStat('0', 'Maagizo'),
+                    _buildStat(_productsCount.toString(), 'Bidhaa'),
+                    _buildStat(_usersCount.toString(), 'Wateja'),
+                    _buildStat(_ordersCount.toString(), 'Maagizo'),
                   ],
                 ),
                 

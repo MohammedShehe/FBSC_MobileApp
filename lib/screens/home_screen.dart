@@ -78,13 +78,60 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Four Brothers Sports Center'),
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/logo.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.blue,
+                      child: const Center(
+                        child: Text(
+                          'FB',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Four Brothers',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
         actions: [
           if (authService.isAuthenticated)
             IconButton(
               icon: const Icon(Icons.admin_panel_settings),
               onPressed: () {
-                // Navigate to admin screen
+                // Navigate to admin screen (to be implemented)
               },
             ),
           IconButton(
@@ -124,14 +171,6 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
-      floatingActionButton: authService.isAuthenticated
-          ? FloatingActionButton(
-              onPressed: () {
-                // Admin button
-              },
-              child: const Icon(Icons.admin_panel_settings),
-            )
-          : null,
     );
   }
 
@@ -213,9 +252,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Theme.of(context).primaryColor,
                   margin: const EdgeInsets.only(right: 10),
                 ),
-                Text(
+                const Text(
                   'Bidhaa Zetu',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  style: TextStyle(
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -232,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 0.65, // Changed from 0.7 to 0.65
+              childAspectRatio: 0.65,
             ),
             itemCount: _filteredProducts.length,
             itemBuilder: (context, index) {

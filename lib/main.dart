@@ -12,6 +12,7 @@ void main() async {
   runApp(const FBSCApp());
 }
 
+// In main.dart - update FBSCApp class:
 class FBSCApp extends StatelessWidget {
   const FBSCApp({super.key});
 

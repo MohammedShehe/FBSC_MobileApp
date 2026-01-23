@@ -164,6 +164,61 @@ class ApiService extends ChangeNotifier {
       print('Error loading orders: $e');
     }
   }
+
+
+// In api_service.dart, add these methods:
+Future<void> loadAddresses(String token) async {
+  try {
+    final response = await http.get(
+      Uri.parse('$baseUrl/addresses'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    ).timeout(const Duration(seconds: 10));
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      _savedAddresses = List<String>.from(data['addresses'] ?? []);
+      notifyListeners();
+    }
+  } catch (e) {
+    print('Error loading addresses: $e');
+    // Load sample addresses if API fails
+    _savedAddresses = [
+      'Mikocheni B, Dar es Salaam',
+      'Kijitonyama, Dar es Salaam',
+      'Sinza, Dar es Salaam'
+    ];
+    notifyListeners();
+  }
+}
+
+Future<Map<String, dynamic>> saveAddress(String token, String address) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/addresses'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'address': address}),
+    ).timeout(const Duration(seconds: 10));
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      addAddress(address);
+      return {'success': true, 'data': data};
+    } else {
+      final data = jsonDecode(response.body);
+      return {'success': false, 'message': data['message'] ?? 'Failed to save address'};
+    }
+  } catch (e) {
+    return {'success': false, 'message': 'Network error: $e'};
+  }
+}
   
   Future<Map<String, dynamic>> login(String phone, String password) async {
     try {
@@ -323,6 +378,88 @@ class ApiService extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Add these methods to your ApiService class in api_service.dart
+
+Future<Map<String, dynamic>> verifyIdentity(String firstName, String lastName) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/verify-identity'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'first_name': firstName,
+        'last_name': lastName,
+      }),
+    ).timeout(const Duration(seconds: 10));
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {'success': true, 'data': data};
+    } else {
+      final data = jsonDecode(response.body);
+      return {'success': false, 'message': data['message'] ?? 'Verification failed'};
+    }
+  } catch (e) {
+    return {'success': false, 'message': 'Network error: $e'};
+  }
+}
+
+Future<Map<String, dynamic>> resetPassword(String firstName, String lastName, String newPassword) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/reset-password'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'first_name': firstName,
+        'last_name': lastName,
+        'new_password': newPassword,
+      }),
+    ).timeout(const Duration(seconds: 10));
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {'success': true, 'data': data};
+    } else {
+      final data = jsonDecode(response.body);
+      return {'success': false, 'message': data['message'] ?? 'Password reset failed'};
+    }
+  } catch (e) {
+    return {'success': false, 'message': 'Network error: $e'};
+  }
+}
+
+Future<Map<String, dynamic>> resetMobile(String firstName, String lastName, String newMobile) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/reset-mobile'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'first_name': firstName,
+        'last_name': lastName,
+        'new_mobile': newMobile,
+      }),
+    ).timeout(const Duration(seconds: 10));
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {'success': true, 'data': data};
+    } else {
+      final data = jsonDecode(response.body);
+      return {'success': false, 'message': data['message'] ?? 'Mobile reset failed'};
+    }
+  } catch (e) {
+    return {'success': false, 'message': 'Network error: $e'};
+  }
+}
   
   List<Product> getSampleProducts() {
     return [

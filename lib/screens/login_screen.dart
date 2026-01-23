@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? initialPhone;
+  
+  const LoginScreen({super.key, this.initialPhone});
 
   @override
   _LoginScreenState createState() => _LoginScreenState();
@@ -16,6 +20,15 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _showPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill phone field if initialPhone is provided
+    if (widget.initialPhone != null) {
+      _phoneController.text = widget.initialPhone!;
+    }
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -140,7 +153,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    // Forgot password
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const ForgotPasswordScreen(),
+                      ),
+                    );
                   },
                   child: const Text('Umesahau nenosiri?'),
                 ),
@@ -166,7 +183,11 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () {
-                  // Navigate to register
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const RegisterScreen(),
+                    ),
+                  );
                 },
                 child: const Text(
                   'Huna Akaunti? Jisajili hapa',
