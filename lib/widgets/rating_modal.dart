@@ -18,6 +18,7 @@ class _RatingModalState extends State<RatingModal> {
   int _productRating = 0;
   final TextEditingController _commentController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
 
   final Map<int, String> _ratingComments = {
     1: "Mbaya sana",
@@ -55,6 +56,31 @@ class _RatingModalState extends State<RatingModal> {
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey),
               ),
+              
+              // Error Message
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error, color: Colors.red),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               
               const SizedBox(height: 24),
               
@@ -196,44 +222,48 @@ class _RatingModalState extends State<RatingModal> {
 
   Future<void> _submitRating() async {
     if (_packageRating == 0 || _deliveryRating == 0 || _productRating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tafadhali tathmini vipengele vyote vitatu.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Tafadhali tathmini vipengele vyote vitatu.';
+      });
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     final authService = Provider.of<AuthService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
 
     try {
-      // Call API to submit rating
-      // This would be implemented when API endpoint is available
-      
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Asante kwa tathmini yako! Maoni yako yanatusaidia kuboresha huduma zetu.'),
-          backgroundColor: Colors.green,
-        ),
+      final result = await apiService.submitRating(
+        authService.authToken!,
+        widget.orderId,
+        _packageRating,
+        _deliveryRating,
+        _productRating,
+        _commentController.text.isNotEmpty ? _commentController.text : null,
       );
-      
-      Navigator.of(context).pop();
-      
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Asante kwa tathmini yako! Maoni yako yanatusaidia kuboresha huduma zetu.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        Navigator.of(context).pop();
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'Hitilafu katika kuwasilisha tathmini';
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hitilafu ya mtandao: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Hitilafu ya mtandao: $e';
+      });
     } finally {
       setState(() {
         _isLoading = false;

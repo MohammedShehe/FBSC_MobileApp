@@ -19,6 +19,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isLoading = false;
   bool _isFirstOrder = true;
   final TextEditingController _passwordController = TextEditingController();
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -27,15 +28,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _checkIfFirstOrder() {
-    final authService = Provider.of<AuthService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
-    
-    // Check if user has previous orders
-    if (apiService.orders.isNotEmpty) {
-      setState(() {
-        _isFirstOrder = false;
-      });
-    }
+    setState(() {
+      _isFirstOrder = apiService.orders.isEmpty;
+    });
   }
 
   @override
@@ -60,12 +56,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 20),
             
             // Step 1: Address Selection
-            if (_currentStep == 1) _buildStep1(apiService),
+            if (_currentStep == 1) _buildStep1(apiService, authService),
             
             // Step 2: Order Summary
             if (_currentStep == 2) _buildStep2(cartService),
             
-            // Step 3: Payment
+            // Step 3: Payment & Password Verification
             if (_currentStep == 3) _buildStep3(cartService, authService),
           ],
         ),
@@ -83,13 +79,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Container(
             height: 2,
             width: 40,
-            color: _currentStep >= 2 ? Colors.green : (Colors.grey[300] ?? Colors.grey),
+            color: _currentStep >= 2 ? Colors.green : Colors.grey[300]!,
           ),
           _buildProgressStep(2, 'Muhtasari', _currentStep >= 2),
           Container(
             height: 2,
             width: 40,
-            color: _currentStep >= 3 ? Colors.green : (Colors.grey[300] ?? Colors.grey),
+            color: _currentStep >= 3 ? Colors.green : Colors.grey[300]!,
           ),
           _buildProgressStep(3, 'Malipo', _currentStep >= 3),
         ],
@@ -107,7 +103,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             color: isActive ? Colors.blue : Colors.grey[200],
             shape: BoxShape.circle,
             border: Border.all(
-              color: isActive ? Colors.blue : (Colors.grey[300] ?? Colors.grey),
+              color: isActive ? Colors.blue : Colors.grey[300]!,
               width: 2,
             ),
           ),
@@ -133,7 +129,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildStep1(ApiService apiService) {
+  Widget _buildStep1(ApiService apiService, AuthService authService) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -143,7 +139,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
         const SizedBox(height: 16),
         
-        // Saved Addresses
         if (apiService.savedAddresses.isEmpty)
           const Text(
             'Huna anwani zilizohifadhiwa. Tafadhali ongeza anwani mpya.',
@@ -181,7 +176,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         
         const SizedBox(height: 16),
         
-        // Add New Address Button
         ElevatedButton.icon(
           onPressed: () {
             setState(() {
@@ -197,15 +191,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         ),
         
-        // New Address Form
         if (_showNewAddressForm)
           Container(
             margin: const EdgeInsets.only(top: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[50] ?? Colors.grey.shade50,
+              color: Colors.grey[50]!,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300] ?? Colors.grey.shade300),
+              border: Border.all(color: Colors.grey[300]!),
             ),
             child: Column(
               children: [
@@ -237,9 +230,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         onPressed: () async {
                           final address = _newAddressController.text.trim();
                           if (address.isNotEmpty) {
-                            // Save address to API
                             final result = await apiService.saveAddress(
-                              Provider.of<AuthService>(context, listen: false).authToken!,
+                              authService.authToken!,
                               address,
                             );
                             
@@ -269,7 +261,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         
         const SizedBox(height: 20),
         
-        // Continue Button
         if (_selectedAddress != null)
           SizedBox(
             width: double.infinity,
@@ -301,7 +292,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Order Items
                 Column(
                   children: cartService.cartItems.map((item) {
                     return Padding(
@@ -336,16 +326,58 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 
                 const Divider(height: 24),
                 
-                // Order Summary
                 _buildSummaryRow('Jumla ya Bidhaa:', '${cartService.itemCount} '),
                 _buildSummaryRow('Jumla ya Bei:', cartService.formattedSubtotal),
                 _buildSummaryRow('Usafirishaji:', 'TZS 0'),
-                _buildSummaryRow('Punguzo:', cartService.formattedDiscount),
+                
+                // Discount calculation based on web rules
+                if (cartService.itemCount >= 3)
+                  _buildSummaryRow('Punguzo (10%):', cartService.formattedDiscount),
+                
                 const Divider(height: 24),
                 _buildSummaryRow(
                   'JUMLA:',
                   cartService.formattedTotal,
                   isTotal: true,
+                ),
+                
+                // Price change warning
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning, color: Colors.red),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Ongezeko la Bei:',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Bei za bidhaa zinaweza kubadilika bila tangazo. Bei inayotumika ni ile iliyoonyeshwa wakati wa kufanya agizo.',
+                              style: TextStyle(
+                                color: Colors.red[800],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -354,50 +386,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         
         const SizedBox(height: 20),
         
-        // Delivery Estimation
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue, Colors.lightBlue],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.local_shipping, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Makadirio ya Uwasilishaji',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Utapokea Bidhaa Hii: ${_calculateDeliveryDate()}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        const SizedBox(height: 20),
-        
-        // Proceed to Payment Button
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -435,7 +423,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 
                 const SizedBox(height: 20),
                 
-                // Password Verification for First Order
                 if (_isFirstOrder) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -446,7 +433,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info, color: Colors.blue),
+                        const Icon(Icons.security, color: Colors.blue),
                         const SizedBox(width: 12),
                         Expanded(
                           child: const Text(
@@ -463,13 +450,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Nenosiri lako',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
+                      errorText: _errorMessage,
                     ),
                     onChanged: (value) {
-                      setState(() {});
+                      setState(() {
+                        _errorMessage = null;
+                      });
                     },
                   ),
                   
@@ -479,30 +469,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {
-                        // Show forgot password dialog
+                        Navigator.of(context).pushNamed('/forgot-password');
                       },
                       child: const Text('Umesahau nenosiri?'),
                     ),
                   ),
+                  
+                  const SizedBox(height: 20),
                 ],
                 
-                const SizedBox(height: 20),
-                
-                // Confirm Order Button
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton.icon(
-                    onPressed: _isFirstOrder && _passwordController.text.isEmpty
-                        ? null
-                        : () {
-                            _confirmOrder(cartService, authService);
-                          },
+                    onPressed: _isLoading ? null : () {
+                      _confirmOrder(cartService, authService);
+                    },
                     icon: const Icon(Icons.check_circle),
-                    label: const Text(
-                      'Thibitisha Agizo',
-                      style: TextStyle(fontSize: 18),
-                    ),
+                    label: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Thibitisha Agizo',
+                            style: TextStyle(fontSize: 18),
+                          ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                     ),
@@ -542,13 +535,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  String _calculateDeliveryDate() {
-    final now = DateTime.now();
-    final deliveryDate = now.add(const Duration(days: 5));
-    final days = ['Jumapili', 'Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', 'Ijumaa', 'Jumamosi'];
-    return days[deliveryDate.weekday];
-  }
-
   Future<void> _confirmOrder(CartService cartService, AuthService authService) async {
     if (_selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -560,6 +546,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    if (_isFirstOrder && _passwordController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Tafadhali weka nenosiri la kwanza kwa agizo';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -567,16 +560,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       
-      // For first order, verify password
-      if (_isFirstOrder) {
-        // Verify password logic here
-      }
-
-      // Place order
       final orderItems = cartService.getOrderItems();
       final result = await apiService.placeOrder(
         authService.authToken!,
         orderItems,
+        shippingAddress: _selectedAddress,
+        password: _isFirstOrder ? _passwordController.text : null,
+        isFirstOrder: _isFirstOrder,
       );
 
       if (result['success']) {
@@ -590,13 +580,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         await apiService.loadOrders(authService.authToken!);
         
         // Update first order status
-        setState(() {
-          _isFirstOrder = false;
-        });
+        authService.updateFirstOrderStatus(false);
         
         // Navigate back
         Navigator.of(context).pop();
       } else {
+        setState(() {
+          _errorMessage = result['message'];
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Hitilafu katika kuweka agizo.'),
@@ -643,6 +634,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
+                Navigator.of(context).pop();
                 Navigator.of(context).pop();
               },
               child: const Text('Endelea na Ununuzi'),

@@ -16,12 +16,14 @@ class _CancelOrderModalState extends State<CancelOrderModal> {
   String? _selectedReason;
   final TextEditingController _detailsController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
 
   final List<Map<String, String>> _reasons = [
-    {'value': 'Nimebadilisha nia', 'label': 'Nimebadilisha nia'},
-    {'value': 'Bei sio sahihi', 'label': 'Bei sio sahihi'},
-    {'value': 'Muda wa usafirishaji mrefu', 'label': 'Muda wa usafirishaji mrefu'},
-    {'value': 'Nyingine', 'label': 'Nyingine'},
+    {'value': 'changed_mind', 'label': 'Nimebadilisha nia'},
+    {'value': 'wrong_price', 'label': 'Bei sio sahihi'},
+    {'value': 'delivery_time', 'label': 'Muda wa usafirishaji mrefu'},
+    {'value': 'found_cheaper', 'label': 'Nimepata bei nafuu mahali pengine'},
+    {'value': 'other', 'label': 'Nyingine'},
   ];
 
   @override
@@ -45,6 +47,31 @@ class _CancelOrderModalState extends State<CancelOrderModal> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              
+              // Error Message
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error, color: Colors.red),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               
               const SizedBox(height: 24),
               
@@ -118,7 +145,7 @@ class _CancelOrderModalState extends State<CancelOrderModal> {
                 children: [
                   Expanded(
                     child: TextButton(
-                      onPressed: () {
+                      onPressed: _isLoading ? null : () {
                         Navigator.of(context).pop();
                       },
                       child: const Text('Batilisha'),
@@ -150,36 +177,41 @@ class _CancelOrderModalState extends State<CancelOrderModal> {
   Future<void> _cancelOrder() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     final authService = Provider.of<AuthService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
 
     try {
-      // Call API to cancel order
-      // This would be implemented when API endpoint is available
-      
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Agizo limeghairiwa kikamilifu.'),
-          backgroundColor: Colors.green,
-        ),
+      final result = await apiService.cancelOrder(
+        authService.authToken!,
+        widget.orderId,
+        _selectedReason!,
+        _detailsController.text,
       );
-      
-      // Update orders list
-      await apiService.loadOrders(authService.authToken!);
-      
-      Navigator.of(context).pop();
-      
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Agizo limeghairiwa kikamilifu.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Update orders list
+        await apiService.loadOrders(authService.authToken!);
+        
+        Navigator.of(context).pop();
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'Hitilafu katika kughairi agizo';
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hitilafu: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Hitilafu ya mtandao: $e';
+      });
     } finally {
       setState(() {
         _isLoading = false;

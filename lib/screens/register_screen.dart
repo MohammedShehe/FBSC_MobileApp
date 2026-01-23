@@ -29,6 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   String _passwordStrength = '';
   Color _passwordStrengthColor = Colors.grey;
+  String? _errorMessage;
 
   void _checkPasswordStrength(String password) {
     int strength = 0;
@@ -60,17 +61,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    
     if (!_agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tafadhali kubali Masharti ya Huduma'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Tafadhali kubali Masharti ya Huduma';
+      });
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     
     final apiService = Provider.of<ApiService>(context, listen: false);
 
@@ -84,6 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'email': _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
         'address': _addressController.text.trim(),
         'gender': _selectedGender,
+        'agree_terms': true, // Required field
       });
 
       if (result['success']) {
@@ -103,22 +106,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Hitilafu katika usajili'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _errorMessage = result['message'];
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hitilafu ya mtandao: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _errorMessage = 'Hitilafu ya mtandao: $e';
+        _isLoading = false;
+      });
     }
   }
 
@@ -201,6 +198,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               
               const SizedBox(height: 30),
+              
+              // Error Message
+              if (_errorMessage != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error, color: Colors.red),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              
+              if (_errorMessage != null) const SizedBox(height: 20),
               
               // First Name and Last Name
               Row(
@@ -457,46 +479,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
               
               // Terms Agreement
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Checkbox(
-                    value: _agreeToTerms,
-                    onChanged: (value) {
-                      setState(() => _agreeToTerms = value ?? false);
-                    },
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TermsScreen(),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Checkbox(
+                            value: _agreeToTerms,
+                            onChanged: (value) {
+                              setState(() => _agreeToTerms = value ?? false);
+                            },
                           ),
-                        );
-                      },
-                      child: RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
-                          ),
-                          children: [
-                            const TextSpan(text: 'Nimekubaliana na '),
-                            TextSpan(
-                              text: 'Masharti ya Huduma',
-                              style: const TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const TermsScreen(),
+                                  ),
+                                );
+                              },
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: 'Nimekubaliana na '),
+                                    TextSpan(
+                                      text: 'Masharti ya Huduma',
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const TextSpan(text: ' ya Four Brothers Sports Center'),
+                                  ],
+                                ),
                               ),
                             ),
-                            const TextSpan(text: ' ya Four Brothers Sports Center'),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
+                      if (!_agreeToTerms)
+                        const Text(
+                          'Unahitaji kukubali masharti ili kuendelea',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
                   ),
-                ],
+                ),
               ),
               
               const SizedBox(height: 30),

@@ -31,10 +31,8 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
     
     try {
-      // Don't wait for all at once, load sequentially
       await loadProducts();
       
-      // Try to load ads and announcement, but don't fail if they don't work
       try {
         await loadAds();
       } catch (e) {
@@ -50,8 +48,9 @@ class ApiService extends ChangeNotifier {
       if (token != null) {
         try {
           await loadOrders(token);
+          await loadAddresses(token);
         } catch (e) {
-          print('Error loading orders: $e');
+          print('Error loading user data: $e');
         }
       }
       
@@ -60,7 +59,6 @@ class ApiService extends ChangeNotifier {
         print('Error loading initial data: $e');
       }
       
-      // If API fails, load sample data
       if (_products.isEmpty) {
         _products = getSampleProducts();
       }
@@ -85,12 +83,10 @@ class ApiService extends ChangeNotifier {
         _products = (data as List).map((product) => Product.fromJson(product)).toList();
         notifyListeners();
       } else {
-        print('Failed to load products: ${response.statusCode}');
         _products = getSampleProducts();
         notifyListeners();
       }
     } catch (e) {
-      print('Error loading products: $e');
       _products = getSampleProducts();
       notifyListeners();
     }
@@ -112,7 +108,6 @@ class ApiService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error loading ads: $e');
       // Don't fail if ads don't load
     }
   }
@@ -139,7 +134,6 @@ class ApiService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error loading announcement: $e');
       // Don't fail if announcement doesn't load
     }
   }
@@ -165,60 +159,57 @@ class ApiService extends ChangeNotifier {
     }
   }
 
-
-// In api_service.dart, add these methods:
-Future<void> loadAddresses(String token) async {
-  try {
-    final response = await http.get(
-      Uri.parse('$baseUrl/addresses'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    ).timeout(const Duration(seconds: 10));
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      _savedAddresses = List<String>.from(data['addresses'] ?? []);
+  Future<void> loadAddresses(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/addresses'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _savedAddresses = List<String>.from(data['addresses'] ?? []);
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading addresses: $e');
+      _savedAddresses = [
+        'Mikocheni B, Dar es Salaam',
+        'Kijitonyama, Dar es Salaam',
+        'Sinza, Dar es Salaam'
+      ];
       notifyListeners();
     }
-  } catch (e) {
-    print('Error loading addresses: $e');
-    // Load sample addresses if API fails
-    _savedAddresses = [
-      'Mikocheni B, Dar es Salaam',
-      'Kijitonyama, Dar es Salaam',
-      'Sinza, Dar es Salaam'
-    ];
-    notifyListeners();
   }
-}
 
-Future<Map<String, dynamic>> saveAddress(String token, String address) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/addresses'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({'address': address}),
-    ).timeout(const Duration(seconds: 10));
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      addAddress(address);
-      return {'success': true, 'data': data};
-    } else {
-      final data = jsonDecode(response.body);
-      return {'success': false, 'message': data['message'] ?? 'Failed to save address'};
+  Future<Map<String, dynamic>> saveAddress(String token, String address) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/addresses'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'address': address}),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        addAddress(address);
+        return {'success': true, 'data': data};
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'message': data['message'] ?? 'Failed to save address'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
     }
-  } catch (e) {
-    return {'success': false, 'message': 'Network error: $e'};
   }
-}
   
   Future<Map<String, dynamic>> login(String phone, String password) async {
     try {
@@ -248,6 +239,11 @@ Future<Map<String, dynamic>> saveAddress(String token, String address) async {
   
   Future<Map<String, dynamic>> register(Map<String, dynamic> userData) async {
     try {
+      // Check if terms agreed
+      if (!(userData['agree_terms'] ?? false)) {
+        return {'success': false, 'message': 'You must agree to the terms and conditions'};
+      }
+      
       final response = await http.post(
         Uri.parse('$baseUrl/register'),
         headers: {
@@ -269,8 +265,18 @@ Future<Map<String, dynamic>> saveAddress(String token, String address) async {
     }
   }
   
-  Future<Map<String, dynamic>> placeOrder(String token, List<Map<String, dynamic>> items) async {
+  Future<Map<String, dynamic>> placeOrder(String token, List<Map<String, dynamic>> items, 
+      {String? shippingAddress, String? password, bool isFirstOrder = false}) async {
     try {
+      final Map<String, dynamic> body = {
+        'items': items,
+        'shipping_address': shippingAddress,
+      };
+      
+      if (isFirstOrder && password != null) {
+        body['first_order_password'] = password;
+      }
+      
       final response = await http.post(
         Uri.parse('$baseUrl/orders'),
         headers: {
@@ -278,7 +284,7 @@ Future<Map<String, dynamic>> saveAddress(String token, String address) async {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'items': items}),
+        body: jsonEncode(body),
       ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
@@ -344,6 +350,36 @@ Future<Map<String, dynamic>> saveAddress(String token, String address) async {
     }
   }
   
+  Future<Map<String, dynamic>> changePhoneNumber(String token, String newPhone, 
+      String currentPassword, String firstName, String lastName) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/change-phone'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'new_phone': newPhone,
+          'current_password': currentPassword,
+          'first_name': firstName,
+          'last_name': lastName,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'message': data['message'] ?? 'Phone number change failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+  
   Future<Map<String, dynamic>> logout(String token) async {
     try {
       final response = await http.post(
@@ -365,6 +401,197 @@ Future<Map<String, dynamic>> saveAddress(String token, String address) async {
     }
   }
   
+  // FORGOT PASSWORD SYSTEM
+  Future<Map<String, dynamic>> verifyIdentity(String firstName, String lastName) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/verify-identity'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'first_name': firstName,
+          'last_name': lastName,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'message': data['message'] ?? 'Verification failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> resetPassword(String firstName, String lastName, String newPassword) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/reset-password'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'first_name': firstName,
+          'last_name': lastName,
+          'new_password': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'message': data['message'] ?? 'Password reset failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> resetMobile(String firstName, String lastName, String newMobile) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/reset-mobile'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'first_name': firstName,
+          'last_name': lastName,
+          'new_mobile': newMobile,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'message': data['message'] ?? 'Mobile reset failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+  
+  // ORDER MANAGEMENT
+  Future<Map<String, dynamic>> cancelOrder(String token, int orderId, String reason, String details) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/orders/$orderId/cancel'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'reason': reason,
+          'details': details,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'message': data['message'] ?? 'Order cancellation failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+  
+  Future<Map<String, dynamic>> submitRating(String token, int orderId, 
+      int packageRating, int deliveryRating, int productRating, String? comment) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/orders/$orderId/rate'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'package_rating': packageRating,
+          'delivery_rating': deliveryRating,
+          'product_rating': productRating,
+          'comment': comment,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'message': data['message'] ?? 'Rating submission failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+  
+  // RETURN SYSTEM
+  Future<Map<String, dynamic>> initiateReturn(String token, int orderId, String reason, 
+      String details, List<String> productIds) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/orders/$orderId/return'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'reason': reason,
+          'details': details,
+          'product_ids': productIds,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'message': data['message'] ?? 'Return initiation failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+  
+  Future<Map<String, dynamic>> getReturnHistory(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/returns'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': 'Failed to load return history'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+  
   void addAddress(String address) {
     if (!_savedAddresses.contains(address)) {
       _savedAddresses.add(address);
@@ -378,88 +605,6 @@ Future<Map<String, dynamic>> saveAddress(String token, String address) async {
       notifyListeners();
     }
   }
-
-  // Add these methods to your ApiService class in api_service.dart
-
-Future<Map<String, dynamic>> verifyIdentity(String firstName, String lastName) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/verify-identity'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'first_name': firstName,
-        'last_name': lastName,
-      }),
-    ).timeout(const Duration(seconds: 10));
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return {'success': true, 'data': data};
-    } else {
-      final data = jsonDecode(response.body);
-      return {'success': false, 'message': data['message'] ?? 'Verification failed'};
-    }
-  } catch (e) {
-    return {'success': false, 'message': 'Network error: $e'};
-  }
-}
-
-Future<Map<String, dynamic>> resetPassword(String firstName, String lastName, String newPassword) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/reset-password'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'first_name': firstName,
-        'last_name': lastName,
-        'new_password': newPassword,
-      }),
-    ).timeout(const Duration(seconds: 10));
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return {'success': true, 'data': data};
-    } else {
-      final data = jsonDecode(response.body);
-      return {'success': false, 'message': data['message'] ?? 'Password reset failed'};
-    }
-  } catch (e) {
-    return {'success': false, 'message': 'Network error: $e'};
-  }
-}
-
-Future<Map<String, dynamic>> resetMobile(String firstName, String lastName, String newMobile) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/reset-mobile'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'first_name': firstName,
-        'last_name': lastName,
-        'new_mobile': newMobile,
-      }),
-    ).timeout(const Duration(seconds: 10));
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return {'success': true, 'data': data};
-    } else {
-      final data = jsonDecode(response.body);
-      return {'success': false, 'message': data['message'] ?? 'Mobile reset failed'};
-    }
-  } catch (e) {
-    return {'success': false, 'message': 'Network error: $e'};
-  }
-}
   
   List<Product> getSampleProducts() {
     return [

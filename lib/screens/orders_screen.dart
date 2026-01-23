@@ -1,4 +1,3 @@
-// orders_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
@@ -6,6 +5,8 @@ import '../services/auth_service.dart';
 import '../models/order.dart';
 import '../widgets/rating_modal.dart';
 import '../widgets/cancel_order_modal.dart';
+import 'initiate_return_screen.dart';
+import 'return_history_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -56,6 +57,19 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historia ya Maagizo'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ReturnHistoryScreen(),
+                ),
+              );
+            },
+            tooltip: 'Historia ya Kurudisha',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -120,226 +134,254 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                     itemCount: orders.length,
                     itemBuilder: (context, index) {
                       final order = orders[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Order Header
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Agizo #${order.id}',
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        order.formattedDate,
-                                        style: const TextStyle(color: Colors.grey),
-                                      ),
-                                    ],
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: order.statusColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: order.statusColor),
-                                    ),
-                                    child: Text(
-                                      order.statusText,
-                                      style: TextStyle(
-                                        color: order.statusColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // Order Items
-                              Column(
-                                children: order.items.map((item) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 50,
-                                          height: 50,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(8),
-                                            image: DecorationImage(
-                                              image: NetworkImage(
-                                                item.product.images.isNotEmpty
-                                                    ? item.product.images.first
-                                                    : 'https://via.placeholder.com/100x100?text=Bidhaa',
-                                              ),
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                item.product.name,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              Text(
-                                                '${item.quantity} × ${item.product.formattedFinalPrice}',
-                                                style: const TextStyle(color: Colors.grey),
-                                              ),
-                                              Text(
-                                                'Saizi: ${item.cleanSize}',
-                                                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Text(
-                                          item.formattedTotalPrice,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.green,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              
-                              const Divider(height: 24),
-                              
-                              // Order Summary
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Jumla ya Agizo:',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    order.formattedTotalPrice,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              if (order.paymentMethod != null) ...[
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.payment, size: 16, color: Colors.grey),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Njia ya Malipo: ${order.paymentMethod}',
-                                      style: const TextStyle(color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                              
-                              if (order.shippingAddress != null) ...[
-                                const SizedBox(height: 8),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Anwani: ${order.shippingAddress}',
-                                        style: const TextStyle(color: Colors.grey),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                              
-                              const SizedBox(height: 16),
-                              
-                              // Action Buttons
-                              Row(
-                                children: [
-                                  if (order.status == 'Imewekwa') ...[
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          _showCancelOrderModal(order);
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Colors.red),
-                                        ),
-                                        child: const Text(
-                                          'Batilisha',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  if (order.status == 'Imepokelewa') ...[
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          _showRatingModal(order);
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Colors.blue),
-                                        ),
-                                        child: const Text(
-                                          'Tathmini',
-                                          style: TextStyle(color: Colors.blue),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: () {
-                                        _viewOrderDetails(context, order);
-                                      },
-                                      child: const Text('Maelezo'),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
+                      return _buildOrderCard(order, context);
                     },
                   ),
                 ),
+    );
+  }
+
+  Widget _buildOrderCard(Order order, BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Order Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Agizo #${order.id}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      order.formattedDate,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: order.statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: order.statusColor),
+                  ),
+                  child: Text(
+                    order.statusText,
+                    style: TextStyle(
+                      color: order.statusColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Order Items
+            Column(
+              children: order.items.map((item) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: NetworkImage(
+                              item.product.images.isNotEmpty
+                                  ? item.product.images.first
+                                  : 'https://via.placeholder.com/100x100?text=Bidhaa',
+                            ),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.product.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${item.quantity} × ${item.product.formattedFinalPrice}',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            Text(
+                              'Saizi: ${item.cleanSize}',
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        item.formattedTotalPrice,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            
+            const Divider(height: 24),
+            
+            // Order Summary
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Jumla ya Agizo:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  order.formattedTotalPrice,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            
+            if (order.paymentMethod != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.payment, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Njia ya Malipo: ${order.paymentMethod}',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ],
+            
+            if (order.shippingAddress != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Anwani: ${order.shippingAddress}',
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            
+            const SizedBox(height: 16),
+            
+            // Action Buttons
+            Row(
+              children: [
+                if (order.status == 'Imewekwa') ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        _showCancelOrderModal(order);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                      child: const Text(
+                        'Batilisha',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                
+                if (order.status == 'Imepokelewa') ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => InitiateReturnScreen(order: order),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.orange),
+                      ),
+                      child: const Text(
+                        'Rudisha',
+                        style: TextStyle(color: Colors.orange),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                
+                if (order.status == 'Imepokelewa') ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        _showRatingModal(order);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.blue),
+                      ),
+                      child: const Text(
+                        'Tathmini',
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      _viewOrderDetails(context, order);
+                    },
+                    child: const Text('Maelezo'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -354,49 +396,6 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     showDialog(
       context: context,
       builder: (context) => CancelOrderModal(orderId: order.id),
-    );
-  }
-
-  void _cancelOrder(BuildContext context, Order order) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ghairisha Agizo'),
-        content: const Text('Una uhakika unataka kughairisha agizo hili? Hili haliwezi kutenduliwa.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Batilisha'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final apiService = Provider.of<ApiService>(context, listen: false);
-              final authService = Provider.of<AuthService>(context, listen: false);
-              
-              try {
-                // Call API to cancel order
-                // This would be implemented when the API endpoint is available
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Agizo limeghairishwa!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                Navigator.of(context).pop();
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Hitilafu: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Ghairisha'),
-          ),
-        ],
-      ),
     );
   }
 

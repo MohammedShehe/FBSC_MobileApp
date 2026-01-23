@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import 'login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -21,6 +23,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _confirmNewPasswordController = TextEditingController();
   final _newMobileController = TextEditingController();
   final _confirmNewMobileController = TextEditingController();
+  String? _errorMessage;
+  String? _successMessage;
 
   @override
   void dispose() {
@@ -36,7 +40,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _verifyIdentity() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _successMessage = null;
+    });
     
     final apiService = Provider.of<ApiService>(context, listen: false);
 
@@ -50,50 +58,49 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         setState(() {
           _isLoading = false;
           _isStep2 = true;
+          _successMessage = 'Utambulisho umethibitishwa. Chagua kile unachotaka kubadilisha.';
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Mteja hajapatikana na maelezo hayo.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _errorMessage = response['message'] ?? 'Mteja hajapatikana na maelezo hayo.';
+        });
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hitilafu ya mtandao: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Hitilafu ya mtandao: $e';
+      });
     }
   }
 
   Future<void> _resetPassword() async {
     if (_newPasswordController.text.isEmpty || 
         _confirmNewPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tafadhali weka nenosiri jipya na urudie.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Tafadhali weka nenosiri jipya na urudie.';
+      });
       return;
     }
 
     if (_newPasswordController.text != _confirmNewPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nenosiri halifanani. Tafadhali hakikisha nenosiri ni sawa.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Nenosiri halifanani. Tafadhali hakikisha nenosiri ni sawa.';
+      });
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (_newPasswordController.text.length < 6) {
+      setState(() {
+        _errorMessage = 'Nenosiri lazima liwe na angalau herufi 6';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     
     final apiService = Provider.of<ApiService>(context, listen: false);
 
@@ -105,56 +112,64 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
 
       if (response['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nenosiri limebadilishwa kikamilifu! Unaweza kuingia sasa kwa nenosiri jipya.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop();
+        setState(() {
+          _isLoading = false;
+          _successMessage = 'Nenosiri limebadilishwa kikamilifu! Unaweza kuingia sasa kwa nenosiri jipya.';
+          _isResetPasswordForm = false;
+          _isStep2 = false;
+        });
+        
+        // Auto navigate to login after 3 seconds
+        Future.delayed(const Duration(seconds: 3), () {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => LoginScreen(
+                initialPhone: _firstNameController.text.trim(),
+              ),
+            ),
+          );
+        });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Hitilafu katika kubadilisha nenosiri.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _isLoading = false;
+          _errorMessage = response['message'] ?? 'Hitilafu katika kubadilisha nenosiri.';
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hitilafu ya mtandao: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Hitilafu ya mtandao: $e';
+      });
     }
   }
 
   Future<void> _resetMobile() async {
     if (_newMobileController.text.isEmpty || 
         _confirmNewMobileController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tafadhali weka nambari mpya ya simu na urudie.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Tafadhali weka nambari mpya ya simu na urudie.';
+      });
       return;
     }
 
     if (_newMobileController.text != _confirmNewMobileController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nambari za simu hazifanani. Tafadhali hakikisha nambari ni sawa.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Nambari za simu hazifanani. Tafadhali hakikisha nambari ni sawa.';
+      });
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (_newMobileController.text.length < 10) {
+      setState(() {
+        _errorMessage = 'Nambari ya simu sio sahihi';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     
     final apiService = Provider.of<ApiService>(context, listen: false);
 
@@ -166,30 +181,34 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
 
       if (response['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nambari ya simu imebadilishwa kikamilifu! Unaweza kuingia sasa kwa nambari mpya.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop();
+        setState(() {
+          _isLoading = false;
+          _successMessage = 'Nambari ya simu imebadilishwa kikamilifu! Unaweza kuingia sasa kwa nambari mpya.';
+          _isResetMobileForm = false;
+          _isStep2 = false;
+        });
+        
+        // Auto navigate to login after 3 seconds
+        Future.delayed(const Duration(seconds: 3), () {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => LoginScreen(
+                initialPhone: _newMobileController.text.trim(),
+              ),
+            ),
+          );
+        });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Hitilafu katika kubadilisha nambari ya simu.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _isLoading = false;
+          _errorMessage = response['message'] ?? 'Hitilafu katika kubadilisha nambari ya simu.';
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hitilafu ya mtandao: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Hitilafu ya mtandao: $e';
+      });
     }
   }
 
@@ -225,6 +244,54 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
             ),
             const SizedBox(height: 30),
+
+            // Error/Success Messages
+            if (_errorMessage != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error, color: Colors.red),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            
+            if (_successMessage != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.green),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _successMessage!,
+                        style: const TextStyle(color: Colors.green),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            if (_errorMessage != null || _successMessage != null)
+              const SizedBox(height: 20),
 
             if (!_isStep2 && !_isResetPasswordForm && !_isResetMobileForm) ...[
               // Step 1: Identity Verification

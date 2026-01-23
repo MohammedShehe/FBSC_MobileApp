@@ -33,12 +33,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   Future<void> _updateProfile() async {
     if (_firstNameController.text.isEmpty || _lastNameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tafadhali jaza jina lako kamili'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showError('Tafadhali jaza jina lako kamili');
       return;
     }
 
@@ -65,32 +60,198 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         final updatedUser = User.fromJson(result['data']['customer']);
         authService.updateUserProfile(updatedUser);
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profaili imesasishwa kikamilifu!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        _showSuccess('Profaili imesasishwa kikamilifu!');
         
         Navigator.of(context).pop();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Hitilafu katika kusasisha profaili'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showError(result['message'] ?? 'Hitilafu katika kusasisha profaili');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hitilafu ya mtandao: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showError('Hitilafu ya mtandao: $e');
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _showChangePhoneDialog() {
+    final newPhoneController = TextEditingController();
+    final confirmPhoneController = TextEditingController();
+    final passwordController = TextEditingController();
+    bool showPassword = false;
+    bool isLoading = false;
+    String? errorMessage;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Badilisha Nambari ya Simu'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (errorMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  
+                  if (errorMessage != null) const SizedBox(height: 16),
+                  
+                  TextFormField(
+                    controller: newPhoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nambari Mpya ya Simu',
+                      hintText: '07XX XXX XXX',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: confirmPhoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Rudia Nambari ya Simu',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Nenosiri la Sasa',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
+                        onPressed: () {
+                          setState(() => showPassword = !showPassword);
+                        },
+                      ),
+                    ),
+                    obscureText: !showPassword,
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Unahitaji kuthibitisha jina lako la kwanza na la mwisho pamoja na nenosiri la sasa kubadilisha nambari ya simu.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                child: const Text('Batilisha'),
+              ),
+              ElevatedButton(
+                onPressed: isLoading ? null : () async {
+                  if (newPhoneController.text.isEmpty || 
+                      confirmPhoneController.text.isEmpty ||
+                      passwordController.text.isEmpty) {
+                    setState(() {
+                      errorMessage = 'Tafadhali jaza sehemu zote';
+                    });
+                    return;
+                  }
+
+                  if (newPhoneController.text != confirmPhoneController.text) {
+                    setState(() {
+                      errorMessage = 'Nambari za simu hazifanani';
+                    });
+                    return;
+                  }
+
+                  setState(() {
+                    isLoading = true;
+                    errorMessage = null;
+                  });
+
+                  final authService = Provider.of<AuthService>(context, listen: false);
+                  final apiService = Provider.of<ApiService>(context, listen: false);
+
+                  try {
+                    final result = await apiService.changePhoneNumber(
+                      authService.authToken!,
+                      newPhoneController.text,
+                      passwordController.text,
+                      widget.user.firstName,
+                      widget.user.lastName,
+                    );
+
+                    if (result['success']) {
+                      final updatedUser = User(
+                        id: widget.user.id,
+                        firstName: widget.user.firstName,
+                        lastName: widget.user.lastName,
+                        phone: newPhoneController.text,
+                        email: widget.user.email,
+                        address: widget.user.address,
+                        gender: widget.user.gender,
+                        token: authService.authToken,
+                        refreshToken: authService.currentUser?.refreshToken,
+                      );
+                      authService.updateUserProfile(updatedUser);
+                      
+                      Navigator.of(context).pop();
+                      _showSuccess('Nambari ya simu imebadilishwa kikamilifu!');
+                    } else {
+                      setState(() {
+                        errorMessage = result['message'];
+                        isLoading = false;
+                      });
+                    }
+                  } catch (e) {
+                    setState(() {
+                      errorMessage = 'Hitilafu ya mtandao: $e';
+                      isLoading = false;
+                    });
+                  }
+                },
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Badilisha'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
@@ -122,23 +283,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       style: const TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        size: 20,
                         color: Colors.white,
                       ),
                     ),
@@ -189,9 +333,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             ),
             const SizedBox(height: 8),
             TextButton.icon(
-              onPressed: () {
-                _showChangePhoneDialog();
-              },
+              onPressed: _showChangePhoneDialog,
               icon: const Icon(Icons.edit),
               label: const Text('Badilisha Nambari ya Simu'),
             ),
@@ -289,95 +431,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showChangePhoneDialog() {
-    final newPhoneController = TextEditingController();
-    final confirmPhoneController = TextEditingController();
-    final passwordController = TextEditingController();
-    bool showPassword = false;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Badilisha Nambari ya Simu'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: newPhoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nambari Mpya ya Simu',
-                    hintText: '07XX XXX XXX',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: confirmPhoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Rudia Nambari ya Simu',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: passwordController,
-                  decoration: InputDecoration(
-                    labelText: 'Nenosiri la Sasa',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () {
-                        setState(() => showPassword = !showPassword);
-                      },
-                    ),
-                  ),
-                  obscureText: !showPassword,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batilisha'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (newPhoneController.text != confirmPhoneController.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Nambari za simu hazifanani'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (passwordController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tafadhali weka nenosiri'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  // Here you would call API to change phone number
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Badilisha'),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
