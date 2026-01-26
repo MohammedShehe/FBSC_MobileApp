@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Login failed'),
+            content: Text(result['message'] ?? 'Imeshindikana kuingia'),
             backgroundColor: Colors.red,
           ),
         );

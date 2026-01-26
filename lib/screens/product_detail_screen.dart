@@ -1,3 +1,4 @@
+// screens/product_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/cart_service.dart';
@@ -37,6 +38,57 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
     _tabController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  // Helper method to check if image is local asset
+  bool _isLocalImage(String imagePath) {
+    return imagePath.startsWith('assets/');
+  }
+
+  Widget _buildImage(String imagePath, {double? height, BoxFit? fit}) {
+    if (_isLocalImage(imagePath)) {
+      return Image.asset(
+        imagePath,
+        height: height,
+        fit: fit ?? BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[200],
+            child: const Center(
+              child: Icon(Icons.image_not_supported, color: Colors.grey),
+            ),
+          );
+        },
+      );
+    } else {
+      return Image.network(
+        imagePath,
+        height: height,
+        fit: fit ?? BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[200],
+            child: const Center(
+              child: Icon(Icons.image_not_supported, color: Colors.grey),
+            ),
+          );
+        },
+      );
+    }
   }
 
   void _addToCart() {
@@ -99,19 +151,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 children: [
-                  PageView.builder(
-                    controller: _pageController,
-                    itemCount: widget.product.images.length,
-                    onPageChanged: (index) {
-                      setState(() => _currentPage = index);
-                    },
-                    itemBuilder: (context, index) {
-                      return Image.network(
-                        widget.product.images[index],
-                        fit: BoxFit.cover,
-                      );
-                    },
-                  ),
+                  if (widget.product.images.isNotEmpty)
+                    PageView.builder(
+                      controller: _pageController,
+                      itemCount: widget.product.images.length,
+                      onPageChanged: (index) {
+                        setState(() => _currentPage = index);
+                      },
+                      itemBuilder: (context, index) {
+                        return _buildImage(
+                          widget.product.images[index],
+                          fit: BoxFit.cover,
+                        );
+                      },
+                    )
+                  else
+                    Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(Icons.image_not_supported, size: 80, color: Colors.grey),
+                      ),
+                    ),
+                  
                   if (widget.product.hasDiscount)
                     Positioned(
                       top: 16,

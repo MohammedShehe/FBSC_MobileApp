@@ -11,6 +11,15 @@ class ProductSize {
     this.stock,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'code': code,
+      'size_label': sizeLabel,
+      'stock': stock,
+    };
+  }
+
   factory ProductSize.fromJson(Map<String, dynamic> json) {
     return ProductSize(
       id: json['id'],
@@ -63,6 +72,26 @@ class Product {
     this.rating = 0.0,
     this.ratingCount = 0,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'company': company,
+      'color': color,
+      'type': type,
+      'price': price,
+      'discount_percent': discountPercent,
+      'final_price': finalPrice,
+      'total_stock': totalStock,
+      'description': description,
+      'images': images,
+      'sizes': sizes.map((size) => size.toJson()).toList(),
+      'created_at': createdAt.toIso8601String(),
+      'avg_rating': rating, // Map 'rating' to 'avg_rating' for JSON
+      'total_ratings': ratingCount, // Map 'ratingCount' to 'total_ratings' for JSON
+    };
+  }
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final sizes = (json['sizes'] as List? ?? []).map((size) {

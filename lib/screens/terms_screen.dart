@@ -299,10 +299,6 @@ class TermsScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Checkbox(
-                        value: false,
-                        onChanged: (value) {},
-                      ),
                       const Expanded(
                         child: Text(
                           'Nimesoma, nimeelewa, na nakubaliana na Masharti yote ya Huduma ya Four Brothers Sports Center',

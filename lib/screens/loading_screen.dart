@@ -1,3 +1,4 @@
+// screens/loading_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
@@ -19,6 +20,7 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
   int _productsCount = 0;
   int _usersCount = 0;
   int _ordersCount = 0;
+  bool _usingLocalData = false;
 
   @override
   void initState() {
@@ -56,6 +58,16 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
       await apiService.loadInitialData(authService.authToken);
       
       if (mounted) {
+        // Check if using local data
+        if (apiService.usingLocalData) {
+          setState(() {
+            _usingLocalData = true;
+          });
+          
+          // Show local data notification
+          await Future.delayed(const Duration(seconds: 2));
+        }
+        
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -172,13 +184,41 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
                 const SizedBox(height: 10),
                 
                 // Loading text
-                const Text(
-                  'Inapakua programu yako...',
-                  style: TextStyle(
+                Text(
+                  _usingLocalData ? 'Using Local Data...' : 'Inapakua programu yako...',
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.grey,
                   ),
                 ),
+                
+                // Local Data Indicator
+                if (_usingLocalData) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.wifi_off, size: 14, color: Colors.orange),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Using Offline Mode',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 
                 const SizedBox(height: 30),
                 
@@ -187,7 +227,7 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
                   value: _progress,
                   backgroundColor: Colors.grey[200],
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).primaryColor,
+                    _usingLocalData ? Colors.orange : Theme.of(context).primaryColor,
                   ),
                   minHeight: 6,
                   borderRadius: BorderRadius.circular(3),

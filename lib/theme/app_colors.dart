@@ -19,8 +19,8 @@ class AppColors {
   static const Color primaryDark = Color(0xFF4dabf7);
   static const Color secondaryDark = Color(0xFF343a40);
   static const Color accentDark = Color(0xFFff922b);
-  static const Color textDark = Color(0xFFf8f9fa);
-  static const Color lightTextDark = Color(0xFFadb5bd);
+  static const Color textDark = Color.fromARGB(255, 241, 222, 2);
+  static const Color lightTextDark = Color.fromARGB(255, 250, 255, 177);
   static const Color borderDark = Color(0xFF495057);
   static const Color cardBgDark = Color(0xFF343a40);
   static const Color bodyBgDark = Color(0xFF212529);

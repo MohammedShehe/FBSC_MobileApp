@@ -26,6 +26,12 @@ flutter:
   
   assets:
     - assets/logo.png
+    - assets/products/
+    - assets/products/Mercurial1.JPEG
+    - assets/products/Mercurial2.JPEG
+    - assets/products/Nike1.JPEG
+    - assets/products/Nike2.JPEG
+    - assets/products/AirZoom.JPEG
 
 flutter_icons:
   android: true

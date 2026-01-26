@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/product.dart';
@@ -26,8 +27,12 @@ class ApiService extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
   
+  bool _usingLocalData = false;
+  bool get usingLocalData => _usingLocalData;
+  
   Future<void> loadInitialData(String? token) async {
     _isLoading = true;
+    _usingLocalData = false;
     notifyListeners();
     
     try {
@@ -59,8 +64,9 @@ class ApiService extends ChangeNotifier {
         print('Error loading initial data: $e');
       }
       
+      // Fallback to local data
       if (_products.isEmpty) {
-        _products = getSampleProducts();
+        await _loadLocalProducts();
       }
     } finally {
       _isLoading = false;
@@ -81,15 +87,178 @@ class ApiService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _products = (data as List).map((product) => Product.fromJson(product)).toList();
+        _usingLocalData = false;
         notifyListeners();
       } else {
-        _products = getSampleProducts();
-        notifyListeners();
+        await _loadLocalProducts();
       }
     } catch (e) {
+      print('Network error loading products: $e');
+      await _loadLocalProducts();
+    }
+  }
+  
+  Future<void> _loadLocalProducts() async {
+    try {
+      _usingLocalData = true;
+      _products = await _getLocalProducts();
+      notifyListeners();
+      print('Loaded ${_products.length} local products');
+    } catch (e) {
+      print('Error loading local products: $e');
       _products = getSampleProducts();
       notifyListeners();
     }
+  }
+  
+  Future<List<Product>> _getLocalProducts() async {
+    final products = <Product>[];
+    
+    try {
+      // Load local product data
+      final localProducts = [
+        {
+          'id': 1,
+          'name': 'Nike Mercurial Superfly 9 Elite',
+          'company': 'Nike',
+          'color': 'Volt/Black',
+          'type': 'Soccer Cleats',
+          'price': 350000,
+          'discount_percent': 15,
+          'final_price': 297500,
+          'total_stock': 8,
+          'description': 'Premium soccer cleats for professional players. Features Flyknit construction and All Conditions Control technology.',
+          'images': ['assets/products/Mercurial1.JPEG', 'assets/products/Mercurial2.JPEG'],
+          'sizes': [
+            {'code': '40', 'size_label': '40', 'stock': 2},
+            {'code': '41', 'size_label': '41', 'stock': 3},
+            {'code': '42', 'size_label': '42', 'stock': 2},
+            {'code': '43', 'size_label': '43', 'stock': 1},
+          ],
+          'created_at': DateTime.now().toString(),
+          'avg_rating': 4.8,
+          'total_ratings': 24
+        },
+        {
+          'id': 2,
+          'name': 'Nike Air Zoom Pegasus 39',
+          'company': 'Nike',
+          'color': 'White/Blue',
+          'type': 'Running Shoes',
+          'price': 180000,
+          'discount_percent': 10,
+          'final_price': 162000,
+          'total_stock': 12,
+          'description': 'Versatile running shoes with responsive cushioning. Perfect for daily training and long-distance running.',
+          'images': ['assets/products/AirZoom.JPEG'],
+          'sizes': [
+            {'code': '39', 'size_label': '39', 'stock': 4},
+            {'code': '40', 'size_label': '40', 'stock': 4},
+            {'code': '41', 'size_label': '41', 'stock': 4},
+          ],
+          'created_at': DateTime.now().toString(),
+          'avg_rating': 4.5,
+          'total_ratings': 18
+        },
+        {
+          'id': 3,
+          'name': 'Nike Air Max 270',
+          'company': 'Nike',
+          'color': 'Black/White',
+          'type': 'Lifestyle',
+          'price': 220000,
+          'discount_percent': 20,
+          'final_price': 176000,
+          'total_stock': 6,
+          'description': 'Comfortable lifestyle shoes with visible Air cushioning. Great for casual wear and light activities.',
+          'images': ['assets/products/Nike1.JPEG', 'assets/products/Nike2.JPEG'],
+          'sizes': [
+            {'code': '38', 'size_label': '38', 'stock': 2},
+            {'code': '40', 'size_label': '40', 'stock': 2},
+            {'code': '42', 'size_label': '42', 'stock': 2},
+          ],
+          'created_at': DateTime.now().toString(),
+          'avg_rating': 4.7,
+          'total_ratings': 32
+        },
+        {
+          'id': 4,
+          'name': 'Adidas Predator Accuracy',
+          'company': 'Adidas',
+          'color': 'White/Red',
+          'type': 'Soccer Cleats',
+          'price': 320000,
+          'discount_percent': 12,
+          'final_price': 281600,
+          'total_stock': 5,
+          'description': 'Professional soccer cleats with precision engineering for accurate passing and shooting.',
+          'images': ['https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=400&fit=crop'],
+          'sizes': [
+            {'code': '39', 'size_label': '39', 'stock': 1},
+            {'code': '41', 'size_label': '41', 'stock': 2},
+            {'code': '43', 'size_label': '43', 'stock': 2},
+          ],
+          'created_at': DateTime.now().toString(),
+          'avg_rating': 4.6,
+          'total_ratings': 19
+        },
+        {
+          'id': 5,
+          'name': 'Puma Future Ultimate',
+          'company': 'Puma',
+          'color': 'Blue/Orange',
+          'type': 'Soccer Cleats',
+          'price': 280000,
+          'discount_percent': 18,
+          'final_price': 229600,
+          'total_stock': 7,
+          'description': 'Agile soccer cleats with adaptive FUZIONFIT+ compression band for lockdown fit.',
+          'images': ['https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=400&h=400&fit=crop'],
+          'sizes': [
+            {'code': '40', 'size_label': '40', 'stock': 3},
+            {'code': '42', 'size_label': '42', 'stock': 2},
+            {'code': '44', 'size_label': '44', 'stock': 2},
+          ],
+          'created_at': DateTime.now().toString(),
+          'avg_rating': 4.4,
+          'total_ratings': 15
+        },
+        {
+          'id': 6,
+          'name': 'New Balance Fresh Foam 1080',
+          'company': 'New Balance',
+          'color': 'Grey/Green',
+          'type': 'Running Shoes',
+          'price': 190000,
+          'discount_percent': 8,
+          'final_price': 174800,
+          'total_stock': 9,
+          'description': 'Premium running shoes with plush Fresh Foam midsole for maximum comfort during long runs.',
+          'images': ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop'],
+          'sizes': [
+            {'code': '38', 'size_label': '38', 'stock': 3},
+            {'code': '40', 'size_label': '40', 'stock': 3},
+            {'code': '42', 'size_label': '42', 'stock': 3},
+          ],
+          'created_at': DateTime.now().toString(),
+          'avg_rating': 4.3,
+          'total_ratings': 21
+        },
+      ];
+      
+      for (var productData in localProducts) {
+        try {
+          final product = Product.fromJson(productData);
+          products.add(product);
+        } catch (e) {
+          print('Error parsing product: $e');
+        }
+      }
+    } catch (e) {
+      print('Error loading local product data: $e');
+    }
+    
+    return products;
   }
   
   Future<void> loadAds() async {
@@ -105,10 +274,23 @@ class ApiService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _ads = data['ads'] ?? [];
-        notifyListeners();
+      } else {
+        // Fallback ads
+        _ads = [
+          {'id': 1, 'image_url': 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&h=400&fit=crop', 'title': 'End of Season Sale', 'description': 'Up to 50% off on selected items'},
+          {'id': 2, 'image_url': 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=800&h=400&fit=crop', 'title': 'New Arrivals', 'description': 'Latest sports shoes available now'},
+          {'id': 3, 'image_url': 'https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=800&h=400&fit=crop', 'title': 'Free Delivery', 'description': 'Free shipping on orders above TZS 200,000'},
+        ];
       }
+      notifyListeners();
     } catch (e) {
-      // Don't fail if ads don't load
+      print('Error loading ads, using fallback: $e');
+      _ads = [
+        {'id': 1, 'image_url': 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&h=400&fit=crop', 'title': 'End of Season Sale', 'description': 'Up to 50% off on selected items'},
+        {'id': 2, 'image_url': 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=800&h=400&fit=crop', 'title': 'New Arrivals', 'description': 'Latest sports shoes available now'},
+        {'id': 3, 'image_url': 'https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=800&h=400&fit=crop', 'title': 'Free Delivery', 'description': 'Free shipping on orders above TZS 200,000'},
+      ];
+      notifyListeners();
     }
   }
   
@@ -131,10 +313,14 @@ class ApiService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _announcement = data['announcement'];
-        notifyListeners();
+      } else {
+        _announcement = 'Karibu kwenye Four Brothers Sports Center. Tuna ofa maalum kwa wateja wetu!';
       }
+      notifyListeners();
     } catch (e) {
-      // Don't fail if announcement doesn't load
+      print('Error loading announcement: $e');
+      _announcement = 'Karibu kwenye Four Brothers Sports Center. Tuna ofa maalum kwa wateja wetu!';
+      notifyListeners();
     }
   }
   
@@ -204,7 +390,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Failed to save address'};
+        return {'success': false, 'message': data['message'] ?? 'Imeshindikana kuhifadhi anwan'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -230,7 +416,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Login failed'};
+        return {'success': false, 'message': data['message'] ?? 'Imeshindikana kuingia'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -258,7 +444,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Registration failed'};
+        return {'success': false, 'message': data['message'] ?? 'Usajili umeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -292,7 +478,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Order placement failed'};
+        return {'success': false, 'message': data['message'] ?? 'Malipo ya agizo yameshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -316,7 +502,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Profile update failed'};
+        return {'success': false, 'message': data['message'] ?? 'Kusasisha wasifu kumeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -343,7 +529,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Password change failed'};
+        return {'success': false, 'message': data['message'] ?? 'Kubadilisha nenosiri kumeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -373,7 +559,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Phone number change failed'};
+        return {'success': false, 'message': data['message'] ?? 'Kubadilisha namba ya simu kumeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -394,7 +580,7 @@ class ApiService extends ChangeNotifier {
       if (response.statusCode == 200) {
         return {'success': true};
       } else {
-        return {'success': false, 'message': 'Logout failed'};
+        return {'success': false, 'message': 'Imeshindikana kutoka'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -421,7 +607,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Verification failed'};
+        return {'success': false, 'message': data['message'] ?? 'Imeshindikana kuthibitisha'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -448,7 +634,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Password reset failed'};
+        return {'success': false, 'message': data['message'] ?? 'Kurekebisha nenosiri kumeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -475,7 +661,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Mobile reset failed'};
+        return {'success': false, 'message': data['message'] ?? 'Kuweka upya simu kumeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -503,7 +689,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Order cancellation failed'};
+        return {'success': false, 'message': data['message'] ?? 'Kughairisha oda kumeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -533,7 +719,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Rating submission failed'};
+        return {'success': false, 'message': data['message'] ?? 'Kutoa alama kumeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -563,7 +749,7 @@ class ApiService extends ChangeNotifier {
         return {'success': true, 'data': data};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['message'] ?? 'Return initiation failed'};
+        return {'success': false, 'message': data['message'] ?? 'Kuanza kurudisha kumeshindikana'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -585,7 +771,7 @@ class ApiService extends ChangeNotifier {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data};
       } else {
-        return {'success': false, 'message': 'Failed to load return history'};
+        return {'success': false, 'message': 'Imeshindikana kupakia historia ya kurudisha'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -607,13 +793,13 @@ class ApiService extends ChangeNotifier {
   }
   
   List<Product> getSampleProducts() {
-    return [
+    return _products.isNotEmpty ? _products : [
       Product(
         id: 1,
         name: "Viatu vya Kukimbia Nike Air Max",
         company: "Nike",
         color: "Nyeusi/Nyeupe",
-        type: "Njumu na Trainer",
+        type: "Running Shoes",
         price: 150000,
         discountPercent: 17,
         finalPrice: 124500,
@@ -632,7 +818,7 @@ class ApiService extends ChangeNotifier {
         name: "Viatu vya Mpira Adidas Predator",
         company: "Adidas",
         color: "Njano/Nyeusi",
-        type: "Viatu vya Mpira",
+        type: "Soccer Cleats",
         price: 180000,
         discountPercent: 20,
         finalPrice: 144000,
@@ -651,7 +837,7 @@ class ApiService extends ChangeNotifier {
         name: "Viatu vya Kawaida Puma Classic",
         company: "Puma",
         color: "Nyeupe",
-        type: "Viatu vya Kawaida",
+        type: "Casual Shoes",
         price: 95000,
         discountPercent: 10,
         finalPrice: 85500,
@@ -670,7 +856,7 @@ class ApiService extends ChangeNotifier {
         name: "Viatu vya Miti Under Armour",
         company: "Under Armour",
         color: "Kijivu",
-        type: "Viatu vya Miti",
+        type: "Hiking Shoes",
         price: 120000,
         discountPercent: 15,
         finalPrice: 102000,
