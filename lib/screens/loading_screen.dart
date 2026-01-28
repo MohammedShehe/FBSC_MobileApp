@@ -38,34 +38,29 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
     final apiService = Provider.of<ApiService>(context, listen: false);
 
     try {
-      for (int i = 0; i <= 100; i += 5) {
-        setState(() {
-          _progress = i / 100;
-          if (i < 30) {
-            _productsCount = (i * 0.5).toInt();
-          } else if (i < 60) {
-            _productsCount = (15 + (i - 30) * 0.3).toInt();
-            _usersCount = (i * 0.2).toInt();
-          } else {
-            _productsCount = (24 + (i - 60) * 0.25).toInt();
-            _usersCount = (12 + (i - 60) * 0.15).toInt();
-            _ordersCount = (i * 0.1).toInt();
-          }
-        });
-        await Future.delayed(const Duration(milliseconds: 50));
+      // Simulate loading with smaller increments
+      for (int i = 0; i <= 100; i += 10) {
+        if (mounted) {
+          setState(() {
+            _progress = i / 100;
+            // Calculate counts based on progress
+            _productsCount = (i * 0.6).toInt();
+            _usersCount = (i * 0.3).toInt();
+            _ordersCount = (i * 0.2).toInt();
+          });
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
       }
 
       await apiService.loadInitialData(authService.authToken);
       
       if (mounted) {
-        // Check if using local data
         if (apiService.usingLocalData) {
           setState(() {
             _usingLocalData = true;
           });
           
-          // Show local data notification
-          await Future.delayed(const Duration(seconds: 2));
+          await Future.delayed(const Duration(seconds: 1));
         }
         
         Navigator.of(context).pushReplacement(
@@ -73,10 +68,12 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
         );
       }
     } catch (e) {
-      setState(() {
-        _error = true;
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _error = true;
+          _errorMessage = e.toString();
+        });
+      }
     }
   }
 
