@@ -26,6 +26,7 @@ flutter:
   
   assets:
     - assets/logo.png
+    - assets/icon.png
     - assets/products/
 
 flutter_icons:
@@ -33,4 +34,4 @@ flutter_icons:
   ios: true
   image_path: "assets/logo.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/logo.png"
+  adaptive_icon_foreground: "assets/icon.png"
